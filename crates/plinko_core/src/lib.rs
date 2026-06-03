@@ -1,4 +1,5 @@
 pub mod geometry;
+pub mod physics;
 
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
