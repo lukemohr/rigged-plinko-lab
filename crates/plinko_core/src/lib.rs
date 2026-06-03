@@ -1,3 +1,5 @@
+pub mod geometry;
+
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
