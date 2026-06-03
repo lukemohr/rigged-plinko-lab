@@ -1,4 +1,5 @@
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use approx::AbsDiffEq;
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vec2 {
@@ -45,6 +46,13 @@ impl Add for Vec2 {
     }
 }
 
+impl AddAssign for Vec2 {
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
+
 impl Sub for Vec2 {
     type Output = Self;
 
@@ -85,24 +93,37 @@ impl Neg for Vec2 {
     }
 }
 
+impl AbsDiffEq for Vec2 {
+    type Epsilon = f64;
+
+    fn default_epsilon() -> Self::Epsilon {
+        f64::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.x.abs_diff_eq(&other.x, epsilon) && self.y.abs_diff_eq(&other.y, epsilon)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn test_vec2_operations() {
         let v1 = Vec2::new(3.0, 4.0);
         let v2 = Vec2::new(1.0, 2.0);
 
-        assert_eq!(v1 + v2, Vec2::new(4.0, 6.0));
-        assert_eq!(v1 - v2, Vec2::new(2.0, 2.0));
-        assert_eq!(v1 * 2.0, Vec2::new(6.0, 8.0));
-        assert_eq!(2.0 * v1, Vec2::new(6.0, 8.0));
-        assert_eq!(v1 / 2.0, Vec2::new(1.5, 2.0));
-        assert_eq!(-v1, Vec2::new(-3.0, -4.0));
-        assert_eq!(v1.len(), 5.0);
-        assert_eq!(v1.dot(v2), 11.0);
-        assert_eq!(v1.normalized().len(), 1.0);
+        assert_abs_diff_eq!(v1 + v2, Vec2::new(4.0, 6.0));
+        assert_abs_diff_eq!(v1 - v2, Vec2::new(2.0, 2.0));
+        assert_abs_diff_eq!(v1 * 2.0, Vec2::new(6.0, 8.0));
+        assert_abs_diff_eq!(2.0 * v1, Vec2::new(6.0, 8.0));
+        assert_abs_diff_eq!(v1 / 2.0, Vec2::new(1.5, 2.0));
+        assert_abs_diff_eq!(-v1, Vec2::new(-3.0, -4.0));
+        assert_abs_diff_eq!(v1.len(), 5.0);
+        assert_abs_diff_eq!(v1.dot(v2), 11.0);
+        assert_abs_diff_eq!(v1.normalized().len(), 1.0);
         assert_eq!(Vec2::new(0.0, 0.0).try_normalized(), None);
     }
 }

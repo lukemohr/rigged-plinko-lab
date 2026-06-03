@@ -9,6 +9,7 @@ repository = "https://github.com/your-name/rigged-plinko-lab"
 
 [workspace.dependencies]
 anyhow = "1"
+approx = "0.5.1"
 rand = "0.10.1"
 rand_chacha = "0.10.0"
 serde = { version = "1", features = ["derive"] }

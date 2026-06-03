@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+approx.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 serde.workspace = true
