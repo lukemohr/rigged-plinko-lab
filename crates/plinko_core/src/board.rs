@@ -20,14 +20,65 @@ pub struct Contact {
     pub penetration_depth: f64,
 }
 
+/// NOTE: This doesn't enforce that all pegs will be inside based on their radius. We'll want to
+/// consider that later.
+pub fn make_standard_board(
+    width: f64,
+    height: f64,
+    rows: usize,
+    cols: usize,
+    peg_radius: f64,
+) -> Board {
+    assert!(width > 0.0, "width must be positive");
+    assert!(height > 0.0, "height must be positive");
+    assert!(rows > 0, "rows must be positive");
+    assert!(cols > 0, "cols must be positive");
+    assert!(peg_radius > 0.0, "peg_radius must be positive");
+
+    let mut pegs = Vec::new();
+    let row_spacing = height / (rows as f64 + 1.0);
+    let col_spacing = width / (cols as f64 + 1.0);
+    for row in 0..rows {
+        let y = row_spacing * (row as f64 + 1.0);
+
+        if row % 2 == 0 {
+            for col in 0..cols {
+                let x = col_spacing * (col as f64 + 1.0);
+                pegs.push(Peg {
+                    center: Vec2::new(x, y),
+                    radius: peg_radius,
+                });
+            }
+        } else {
+            for col in 0..(cols - 1) {
+                let x = col_spacing * (col as f64 + 1.0) + col_spacing / 2.0;
+                pegs.push(Peg {
+                    center: Vec2::new(x, y),
+                    radius: peg_radius,
+                });
+            }
+        }
+    }
+    Board {
+        width,
+        height,
+        pegs,
+    }
+}
+
 pub fn detect_ball_peg_collision(ball: &Ball, peg: &Peg) -> Option<Contact> {
     let to_ball = ball.position - peg.center;
     let distance = to_ball.len();
     let penetration_depth = ball.radius + peg.radius - distance;
+    let normal = if distance == 0.0 {
+        Vec2::new(1.0, 0.0)
+    } else {
+        to_ball / distance
+    };
 
     if penetration_depth > 0.0 {
         Some(Contact {
-            normal: to_ball / distance,
+            normal,
             penetration_depth,
         })
     } else {
@@ -82,6 +133,37 @@ pub fn step_ball(ball: &mut Ball, board: &Board, config: &PhysicsConfig) {
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+
+    #[test]
+    fn standard_board_has_correct_peg_positions() {
+        let board = make_standard_board(10.0, 10.0, 2, 3, 0.5);
+        assert_eq!(board.pegs.len(), 5);
+        assert_abs_diff_eq!(board.pegs[0].center, Vec2::new(2.5, 3.3333333333333335));
+        assert_abs_diff_eq!(board.pegs[1].center, Vec2::new(5.0, 3.3333333333333335));
+        assert_abs_diff_eq!(board.pegs[2].center, Vec2::new(7.5, 3.3333333333333335));
+
+        assert_abs_diff_eq!(board.pegs[3].center, Vec2::new(3.75, 6.666666666666667));
+        assert_abs_diff_eq!(board.pegs[4].center, Vec2::new(6.25, 6.666666666666667));
+    }
+
+    #[test]
+    fn standard_board_all_pegs_within_bounds() {
+        let board = make_standard_board(10.0, 10.0, 5, 5, 0.5);
+        for peg in &board.pegs {
+            assert!(peg.center.x > peg.radius);
+            assert!(peg.center.x < board.width - peg.radius);
+            assert!(peg.center.y > peg.radius);
+            assert!(peg.center.y < board.height - peg.radius);
+        }
+    }
+
+    #[test]
+    fn standard_board_has_correct_peg_radius() {
+        let board = make_standard_board(10.0, 10.0, 2, 3, 0.5);
+        for peg in &board.pegs {
+            assert_abs_diff_eq!(peg.radius, 0.5);
+        }
+    }
 
     #[test]
     fn detect_no_collision() {
