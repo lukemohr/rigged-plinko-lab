@@ -1,11 +1,20 @@
 use crate::geometry::Vec2;
 use crate::physics::Ball;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Peg {
     pub center: Vec2,
     pub radius: f64,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Board {
+    pub width: f64,
+    pub height: f64,
+    pub pegs: Vec<Peg>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Contact {
     pub normal: Vec2,
     pub penetration_depth: f64,
@@ -24,6 +33,26 @@ pub fn detect_ball_peg_collision(ball: &Ball, peg: &Peg) -> Option<Contact> {
     } else {
         None
     }
+}
+
+pub fn detect_ball_wall_collision(ball: &Ball, board: &Board) -> Option<Contact> {
+    let left_penetration = ball.radius - ball.position.x;
+    if left_penetration > 0.0 {
+        return Some(Contact {
+            normal: Vec2::new(1.0, 0.0),
+            penetration_depth: left_penetration,
+        });
+    }
+
+    let right_penetration = ball.radius - (board.width - ball.position.x);
+    if right_penetration > 0.0 {
+        return Some(Contact {
+            normal: Vec2::new(-1.0, 0.0),
+            penetration_depth: right_penetration,
+        });
+    }
+
+    None
 }
 
 pub fn resolve_ball_collision(ball: &mut Ball, contact: &Contact, restitution: f64) {
@@ -142,5 +171,101 @@ mod tests {
 
         assert_abs_diff_eq!(ball.position, Vec2::new(1.5, 0.0));
         assert_abs_diff_eq!(ball.velocity, Vec2::new(1.0, 0.0));
+    }
+
+    #[test]
+    fn resolve_no_wall_collision() {
+        let ball = Ball {
+            position: Vec2::new(5.0, 5.0),
+            velocity: Vec2::new(1.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+
+        assert!(detect_ball_wall_collision(&ball, &board).is_none());
+    }
+
+    #[test]
+    fn resolve_left_wall_collision() {
+        let mut ball = Ball {
+            position: Vec2::new(0.4, 0.0),
+            velocity: Vec2::new(-1.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+
+        let contact = detect_ball_wall_collision(&ball, &board).unwrap();
+        resolve_ball_collision(&mut ball, &contact, 1.0);
+
+        assert_abs_diff_eq!(ball.position, Vec2::new(0.5, 0.0));
+        assert_abs_diff_eq!(ball.velocity, Vec2::new(1.0, 0.0));
+    }
+
+    #[test]
+    fn resolve_right_wall_collision() {
+        let mut ball = Ball {
+            position: Vec2::new(9.6, 0.0),
+            velocity: Vec2::new(1.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+
+        let contact = detect_ball_wall_collision(&ball, &board).unwrap();
+        resolve_ball_collision(&mut ball, &contact, 1.0);
+
+        assert_abs_diff_eq!(ball.position, Vec2::new(9.5, 0.0));
+        assert_abs_diff_eq!(ball.velocity, Vec2::new(-1.0, 0.0));
+    }
+
+    #[test]
+    fn resolve_left_wall_collision_diagonal() {
+        let mut ball = Ball {
+            position: Vec2::new(0.4, 0.4),
+            velocity: Vec2::new(-1.0, -1.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+
+        let contact = detect_ball_wall_collision(&ball, &board).unwrap();
+        resolve_ball_collision(&mut ball, &contact, 1.0);
+
+        assert_abs_diff_eq!(ball.position, Vec2::new(0.5, 0.4));
+        assert_abs_diff_eq!(ball.velocity, Vec2::new(1.0, -1.0));
+    }
+
+    #[test]
+    fn resolve_left_wall_collision_with_restitution() {
+        let mut ball = Ball {
+            position: Vec2::new(0.4, 0.0),
+            velocity: Vec2::new(-1.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+
+        let contact = detect_ball_wall_collision(&ball, &board).unwrap();
+        resolve_ball_collision(&mut ball, &contact, 0.5);
+
+        assert_abs_diff_eq!(ball.position, Vec2::new(0.5, 0.0));
+        assert_abs_diff_eq!(ball.velocity, Vec2::new(0.5, 0.0));
     }
 }
