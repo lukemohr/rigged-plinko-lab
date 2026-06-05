@@ -3,6 +3,7 @@ use crate::geometry::Vec2;
 pub struct PhysicsConfig {
     pub gravity: Vec2,
     pub dt: f64,
+    pub restitution: f64,
 }
 
 pub struct Ball {
@@ -31,6 +32,7 @@ mod tests {
         let config = PhysicsConfig {
             gravity: Vec2::new(0.0, 0.0),
             dt: 0.1,
+            restitution: 0.0,
         };
 
         integrate_ball(&mut ball, &config);
@@ -49,6 +51,7 @@ mod tests {
         let config = PhysicsConfig {
             gravity: Vec2::new(0.0, 9.8),
             dt: 0.1,
+            restitution: 0.0,
         };
 
         integrate_ball(&mut ball, &config);
