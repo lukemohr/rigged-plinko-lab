@@ -1,5 +1,5 @@
 use crate::geometry::Vec2;
-use crate::physics::Ball;
+use crate::physics::{integrate_ball, Ball, PhysicsConfig};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Peg {
@@ -61,6 +61,20 @@ pub fn resolve_ball_collision(ball: &mut Ball, contact: &Contact, restitution: f
     if velocity_along_normal < 0.0 {
         ball.velocity =
             ball.velocity - (1.0 + restitution) * velocity_along_normal * contact.normal;
+    }
+}
+
+pub fn step_ball(ball: &mut Ball, board: &Board, config: &PhysicsConfig) {
+    integrate_ball(ball, config);
+
+    if let Some(contact) = detect_ball_wall_collision(ball, board) {
+        resolve_ball_collision(ball, &contact, config.restitution);
+    }
+
+    for peg in &board.pegs {
+        if let Some(contact) = detect_ball_peg_collision(ball, peg) {
+            resolve_ball_collision(ball, &contact, config.restitution);
+        }
     }
 }
 
@@ -267,5 +281,49 @@ mod tests {
 
         assert_abs_diff_eq!(ball.position, Vec2::new(0.5, 0.0));
         assert_abs_diff_eq!(ball.velocity, Vec2::new(0.5, 0.0));
+    }
+
+    #[test]
+    fn step_ball_no_collisions() {
+        let mut ball = Ball {
+            position: Vec2::new(5.0, 5.0),
+            velocity: Vec2::new(1.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+        let config = PhysicsConfig {
+            gravity: Vec2::new(0.0, 0.0),
+            dt: 1.0,
+            restitution: 1.0,
+        };
+        step_ball(&mut ball, &board, &config);
+        assert_abs_diff_eq!(ball.position, Vec2::new(6.0, 5.0));
+        assert_abs_diff_eq!(ball.velocity, Vec2::new(1.0, 0.0));
+    }
+
+    #[test]
+    fn step_ball_with_wall_collision() {
+        let mut ball = Ball {
+            position: Vec2::new(9.6, 5.0),
+            velocity: Vec2::new(1.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+        let config = PhysicsConfig {
+            gravity: Vec2::new(0.0, 0.0),
+            dt: 1.0,
+            restitution: 1.0,
+        };
+        step_ball(&mut ball, &board, &config);
+        assert_abs_diff_eq!(ball.position, Vec2::new(9.5, 5.0));
+        assert_abs_diff_eq!(ball.velocity, Vec2::new(-1.0, 0.0));
     }
 }
