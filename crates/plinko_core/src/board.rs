@@ -20,6 +20,13 @@ pub struct Contact {
     pub penetration_depth: f64,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BallExit {
+    pub final_position: Vec2,
+    pub steps: usize,
+    pub exited: bool,
+}
+
 /// NOTE: This doesn't enforce that all pegs will be inside based on their radius. We'll want to
 /// consider that later.
 pub fn make_standard_board(
@@ -126,6 +133,30 @@ pub fn step_ball(ball: &mut Ball, board: &Board, config: &PhysicsConfig) {
         if let Some(contact) = detect_ball_peg_collision(ball, peg) {
             resolve_ball_collision(ball, &contact, config.restitution);
         }
+    }
+}
+
+pub fn run_ball_until_exit(
+    board: &Board,
+    initial_ball: Ball,
+    config: &PhysicsConfig,
+    max_steps: usize,
+) -> BallExit {
+    let mut ball = initial_ball;
+    for step in 0..max_steps {
+        step_ball(&mut ball, board, config);
+        if ball.position.y > board.height {
+            return BallExit {
+                final_position: ball.position,
+                steps: step + 1,
+                exited: true,
+            };
+        }
+    }
+    BallExit {
+        final_position: ball.position,
+        steps: max_steps,
+        exited: false,
     }
 }
 
@@ -407,5 +438,75 @@ mod tests {
         step_ball(&mut ball, &board, &config);
         assert_abs_diff_eq!(ball.position, Vec2::new(9.5, 5.0));
         assert_abs_diff_eq!(ball.velocity, Vec2::new(-1.0, 0.0));
+    }
+
+    #[test]
+    fn step_ball_off_board_no_pegs() {
+        let initial_ball = Ball {
+            position: Vec2::new(5.0, 9.0),
+            velocity: Vec2::new(0.0, 1.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+        let config = PhysicsConfig {
+            gravity: Vec2::new(0.0, 0.0),
+            dt: 1.0,
+            restitution: 1.0,
+        };
+        let exit = run_ball_until_exit(&board, initial_ball, &config, 10);
+        assert!(exit.exited);
+        assert_abs_diff_eq!(exit.final_position, Vec2::new(5.0, 11.0));
+        assert_eq!(exit.steps, 2);
+    }
+
+    #[test]
+    fn step_ball_off_board_with_pegs() {
+        let initial_ball = Ball {
+            position: Vec2::new(5.0, 9.0),
+            velocity: Vec2::new(0.0, 1.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![Peg {
+                center: Vec2::new(5.0, 9.5),
+                radius: 0.5,
+            }],
+        };
+        let config = PhysicsConfig {
+            gravity: Vec2::new(0.0, 5.0),
+            dt: 1.0,
+            restitution: 1.0,
+        };
+        let exit = run_ball_until_exit(&board, initial_ball, &config, 20);
+        assert!(exit.exited);
+    }
+
+    #[test]
+    fn step_ball_does_not_exit_if_stationary() {
+        let initial_ball = Ball {
+            position: Vec2::new(5.0, 9.0),
+            velocity: Vec2::new(0.0, 0.0),
+            radius: 0.5,
+        };
+        let board = Board {
+            width: 10.0,
+            height: 10.0,
+            pegs: vec![],
+        };
+        let config = PhysicsConfig {
+            gravity: Vec2::new(0.0, 0.0),
+            dt: 1.0,
+            restitution: 1.0,
+        };
+        let exit = run_ball_until_exit(&board, initial_ball, &config, 10);
+        assert!(!exit.exited);
+        assert_abs_diff_eq!(exit.final_position, Vec2::new(5.0, 9.0));
+        assert_eq!(exit.steps, 10);
     }
 }
