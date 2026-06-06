@@ -161,9 +161,10 @@ pub fn run_ball_until_exit(
 }
 
 pub fn bin_index_for_x(x: f64, board_width: f64, bin_count: usize) -> usize {
-    let clamped_x = x.clamp(0.0, board_width - 1e-6);
-    let bin_width = board_width / bin_count as f64;
-    (clamped_x / bin_width).floor() as usize
+    assert!(board_width > 0.0, "board_width must be positive");
+    assert!(bin_count > 0, "bin_count must be positive");
+    let raw_index = (x.clamp(0.0, board_width) * bin_count as f64 / board_width).floor() as usize;
+    raw_index.min(bin_count - 1)
 }
 
 #[cfg(test)]
@@ -187,10 +188,10 @@ mod tests {
     fn standard_board_all_pegs_within_bounds() {
         let board = make_standard_board(10.0, 10.0, 5, 5, 0.5);
         for peg in &board.pegs {
-            assert!(peg.center.x > peg.radius);
-            assert!(peg.center.x < board.width - peg.radius);
-            assert!(peg.center.y > peg.radius);
-            assert!(peg.center.y < board.height - peg.radius);
+            assert!(peg.center.x - peg.radius >= 0.0);
+            assert!(peg.center.x + peg.radius <= board.width);
+            assert!(peg.center.y - peg.radius >= 0.0);
+            assert!(peg.center.y + peg.radius <= board.height);
         }
     }
 
@@ -447,7 +448,7 @@ mod tests {
     }
 
     #[test]
-    fn step_ball_off_board_no_pegs() {
+    fn run_ball_until_exit_no_pegs() {
         let initial_ball = Ball {
             position: Vec2::new(5.0, 9.0),
             velocity: Vec2::new(0.0, 1.0),
@@ -470,7 +471,7 @@ mod tests {
     }
 
     #[test]
-    fn step_ball_off_board_with_pegs() {
+    fn run_ball_until_exit_with_pegs() {
         let initial_ball = Ball {
             position: Vec2::new(5.0, 9.0),
             velocity: Vec2::new(0.0, 1.0),
@@ -494,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn step_ball_does_not_exit_if_stationary() {
+    fn run_ball_until_exit_returns_not_exited_for_stationary_ball() {
         let initial_ball = Ball {
             position: Vec2::new(5.0, 9.0),
             velocity: Vec2::new(0.0, 0.0),
