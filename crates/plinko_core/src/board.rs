@@ -160,6 +160,12 @@ pub fn run_ball_until_exit(
     }
 }
 
+pub fn bin_index_for_x(x: f64, board_width: f64, bin_count: usize) -> usize {
+    let clamped_x = x.clamp(0.0, board_width - 1e-6);
+    let bin_width = board_width / bin_count as f64;
+    (clamped_x / bin_width).floor() as usize
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -508,5 +514,22 @@ mod tests {
         assert!(!exit.exited);
         assert_abs_diff_eq!(exit.final_position, Vec2::new(5.0, 9.0));
         assert_eq!(exit.steps, 10);
+    }
+
+    #[test]
+    fn bin_index_for_various_x() {
+        let board_width = 10.0;
+        let bin_count = 5;
+
+        assert_eq!(bin_index_for_x(-1.0, board_width, bin_count), 0);
+        assert_eq!(bin_index_for_x(0.0, board_width, bin_count), 0);
+        assert_eq!(bin_index_for_x(1.0, board_width, bin_count), 0);
+        assert_eq!(bin_index_for_x(2.0, board_width, bin_count), 1);
+        assert_eq!(bin_index_for_x(4.9, board_width, bin_count), 2);
+        assert_eq!(bin_index_for_x(5.0, board_width, bin_count), 2);
+        assert_eq!(bin_index_for_x(7.5, board_width, bin_count), 3);
+        assert_eq!(bin_index_for_x(9.9, board_width, bin_count), 4);
+        assert_eq!(bin_index_for_x(10.0, board_width, bin_count), 4);
+        assert_eq!(bin_index_for_x(11.0, board_width, bin_count), 4);
     }
 }
