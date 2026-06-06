@@ -7,10 +7,10 @@ fn main() -> Result<()> {
 
     let params = PlinkoParams {
         drop_x: 0.5,
-        board_bias: 0.0,
+        ball_radius: 0.25,
     };
 
-    let seeds = sequential_seeds(1_000);
+    let seeds = sequential_seeds(2_000);
     let evaluation = experiment.evaluate(&params, &seeds);
 
     println!("Trials: {}", evaluation.trials);

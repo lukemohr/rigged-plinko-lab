@@ -1,13 +1,15 @@
 use crate::geometry::Vec2;
 use crate::physics::{integrate_ball, Ball, PhysicsConfig};
 
-#[derive(Debug, Clone, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Peg {
     pub center: Vec2,
     pub radius: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Board {
     pub width: f64,
     pub height: f64,

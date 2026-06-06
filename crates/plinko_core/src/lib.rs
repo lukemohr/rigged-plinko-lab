@@ -2,6 +2,10 @@ pub mod board;
 pub mod geometry;
 pub mod physics;
 
+pub use board::*;
+pub use geometry::*;
+pub use physics::*;
+
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
@@ -9,14 +13,9 @@ use sim_core::{Evaluation, Seed, StochasticExperiment};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlinkoParams {
-    /// Horizontal drop location, normalized so 0.0 is left and 1.0 is right.
+    // Value between 0.0 and 1.0 representing normalized horizontal drop position of the ball
     pub drop_x: f64,
-
-    /// A temporary "bias" parameter.
-    ///
-    /// Later this will be replaced by actual peg geometry. For now, it lets us
-    /// test the experiment/evaluation structure before writing physics.
-    pub board_bias: f64,
+    pub ball_radius: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -32,8 +31,11 @@ pub struct PlinkoMetrics {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlinkoExperiment {
+    pub board: Board,
     pub bin_count: usize,
     pub target_bin: usize,
+    pub physics: PhysicsConfig,
+    pub max_steps: usize,
 }
 
 impl PlinkoExperiment {
@@ -45,8 +47,15 @@ impl PlinkoExperiment {
         );
 
         Self {
+            board: make_standard_board(10.0, 10.0, 5, 5, 0.5),
             bin_count,
             target_bin,
+            physics: PhysicsConfig {
+                gravity: Vec2::new(0.0, 9.8),
+                dt: 0.01,
+                restitution: 0.75,
+            },
+            max_steps: 1000,
         }
     }
 }
@@ -58,18 +67,21 @@ impl StochasticExperiment for PlinkoExperiment {
 
     fn run_trial(&self, params: &Self::Params, seed: Seed) -> Self::Outcome {
         let mut rng = ChaCha8Rng::seed_from_u64(seed.0);
-
-        // Temporary toy model:
-        // - start from drop_x
-        // - add board_bias
-        // - add random noise
-        //
-        // Later, this will become actual ball/peg simulation.
-        let noise = rng.random_range(-0.35..0.35);
-        let landing_x = (params.drop_x + params.board_bias + noise).clamp(0.0, 0.999_999);
-
-        let bin_index = (landing_x * self.bin_count as f64).floor() as usize;
-
+        let noise = rng.random_range(-0.05..0.05);
+        let drop_x = (params.drop_x + noise).clamp(0.0, 1.0)
+            * self
+                .board
+                .width
+                .clamp(params.ball_radius, self.board.width - params.ball_radius);
+        let initial_ball = Ball {
+            position: Vec2::new(drop_x, 0.0),
+            velocity: Vec2::new(0.0, 0.0),
+            radius: params.ball_radius,
+        };
+        let ball_exit =
+            run_ball_until_exit(&self.board, initial_ball, &self.physics, self.max_steps);
+        let bin_index =
+            bin_index_for_x(ball_exit.final_position.x, self.board.width, self.bin_count);
         PlinkoOutcome { bin_index }
     }
 
@@ -110,7 +122,7 @@ mod tests {
         let experiment = PlinkoExperiment::new(7, 3);
         let params = PlinkoParams {
             drop_x: 0.5,
-            board_bias: 0.0,
+            ball_radius: 0.5,
         };
         let seeds = sequential_seeds(100);
 
@@ -125,7 +137,7 @@ mod tests {
         let experiment = PlinkoExperiment::new(7, 3);
         let params = PlinkoParams {
             drop_x: 0.5,
-            board_bias: 0.0,
+            ball_radius: 0.5,
         };
         let seeds = sequential_seeds(100);
 

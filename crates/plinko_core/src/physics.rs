@@ -1,11 +1,15 @@
 use crate::geometry::Vec2;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PhysicsConfig {
     pub gravity: Vec2,
     pub dt: f64,
     pub restitution: f64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Ball {
     pub position: Vec2,
     pub velocity: Vec2,
